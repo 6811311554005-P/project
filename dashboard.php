@@ -1,6 +1,5 @@
 <?php
-// เชื่อมต่อฐานข้อมูล (เปิดใช้เมื่อสร้างไฟล์ connect.php แล้ว)
-// include 'connect.php'; 
+include 'connect.php'; 
 
 // ข้อมูลจำลองสำหรับแสดงผล (Mockup Data)
 $total_registered = 20; // จำนวนคนลงทะเบียนทั้งหมด
