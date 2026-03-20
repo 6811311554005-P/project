@@ -1,74 +1,71 @@
 <?php
-include 'connect.php'; // ดึงไฟล์เชื่อมต่อฐานข้อมูล
+include 'connect.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    // 1. รับค่าจากฟอร์มทั้งหมด (ใช้ mysqli_real_escape_string เพื่อป้องกัน Error ถ้าเผลอพิมพ์เครื่องหมาย ')
-    $prefix = mysqli_real_escape_string($conn, $_POST['prefix']);
-    $full_name = mysqli_real_escape_string($conn, $_POST['full_name']);
-    $id_card = mysqli_real_escape_string($conn, $_POST['id_card']);
-    $birth_date = mysqli_real_escape_string($conn, $_POST['birth_date']);
-    $age = !empty($_POST['age']) ? $_POST['age'] : 'NULL'; // ถ้าไม่ได้ใส่อายุ ให้เป็นค่าว่างในระบบ
-    $address = mysqli_real_escape_string($conn, $_POST['address']);
-    
-    $marital_status = mysqli_real_escape_string($conn, $_POST['marital_status']);
-    $ethnicity = mysqli_real_escape_string($conn, $_POST['ethnicity']);
-    $nationality = mysqli_real_escape_string($conn, $_POST['nationality']);
-    $religion = mysqli_real_escape_string($conn, $_POST['religion']);
-    
-    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $line_id = mysqli_real_escape_string($conn, $_POST['line_id']);
-    
-    $edu_apply = mysqli_real_escape_string($conn, $_POST['edu_apply']);
-    $edu_highest = mysqli_real_escape_string($conn, $_POST['edu_highest']);
-    
-    $last_company = mysqli_real_escape_string($conn, $_POST['last_company']);
-    $last_position = mysqli_real_escape_string($conn, $_POST['last_position']);
-    $last_salary = !empty($_POST['last_salary']) ? $_POST['last_salary'] : 'NULL';
-    $reason_leaving = mysqli_real_escape_string($conn, $_POST['reason_leaving']);
-    $experience_benefit = mysqli_real_escape_string($conn, $_POST['experience_benefit']);
-    
-    $ref_name = mysqli_real_escape_string($conn, $_POST['ref_name']);
-    $ref_workplace = mysqli_real_escape_string($conn, $_POST['ref_workplace']);
-    $ref_phone = mysqli_real_escape_string($conn, $_POST['ref_phone']);
-    $ref_relation = mysqli_real_escape_string($conn, $_POST['ref_relation']);
-
-    // 2. จัดการเรื่องอัปโหลดรูปภาพ
+    // --- 1. จัดการอัปโหลดรูปภาพ ---
     $photo_name = "";
     if (isset($_FILES['emp_photo']) && $_FILES['emp_photo']['error'] == 0) {
         $ext = pathinfo($_FILES['emp_photo']['name'], PATHINFO_EXTENSION);
-        $photo_name = "emp_" . time() . "." . $ext; // เปลี่ยนชื่อไฟล์ไม่ให้ซ้ำกัน (เช่น emp_1710839201.jpg)
-        $upload_path = "uploads/" . $photo_name;
-        move_uploaded_file($_FILES['emp_photo']['tmp_name'], $upload_path); // ย้ายไฟล์ไปเก็บในโฟลเดอร์ uploads
+        $photo_name = "emp_" . time() . "." . $ext;
+        if (!is_dir('uploads')) { mkdir('uploads', 0777, true); } // สร้างโฟลเดอร์ถ้าไม่มี
+        move_uploaded_file($_FILES['emp_photo']['tmp_name'], "uploads/" . $photo_name);
     }
 
-    // 3. คำสั่ง SQL สำหรับบันทึกข้อมูล (INSERT)
-    $sql = "INSERT INTO employees (
-        emp_photo, prefix, full_name, id_card, birth_date, age, address, 
-        marital_status, ethnicity, nationality, religion, phone, email, line_id, 
-        edu_apply, edu_highest, last_company, last_position, last_salary, 
-        reason_leaving, experience_benefit, ref_name, ref_workplace, ref_phone, ref_relation
-    ) VALUES (
-        '$photo_name', '$prefix', '$full_name', '$id_card', '$birth_date', $age, '$address',
-        '$marital_status', '$ethnicity', '$nationality', '$religion', '$phone', '$email', '$line_id',
-        '$edu_apply', '$edu_highest', '$last_company', '$last_position', $last_salary,
-        '$reason_leaving', '$experience_benefit', '$ref_name', '$ref_workplace', '$ref_phone', '$ref_relation'
-    )";
+    // --- 2. รับค่าข้อมูลส่วนตัว (ตาราง employees) ---
+    $prefix = mysqli_real_escape_string($conn, $_POST['prefix']);
+    // แยกชื่อ-นามสกุล จาก input "full_name"
+    $full_name = mysqli_real_escape_string($conn, $_POST['full_name']);
+    $name_arr = explode(" ", $full_name, 2);
+    $first_name = $name_arr[0];
+    $last_name = isset($name_arr[1]) ? $name_arr[1] : "";
 
-    // 4. สั่งให้ SQL ทำงาน และเช็คผลลัพธ์
-    if (mysqli_query($conn, $sql)) {
-        // ถ้าสำเร็จ ให้เด้งข้อความและกลับไปหน้า Dashboard
+    $id_card = mysqli_real_escape_string($conn, $_POST['id_card']);
+    $birth_date = $_POST['birth_date'];
+    $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $line_id = mysqli_real_escape_string($conn, $_POST['line_id']);
+
+    // บันทึกลงตาราง employees
+    $sql1 = "INSERT INTO employees (prefix, first_name, last_name, id_card, birth_date, address, phone, email, line_id, photo) 
+             VALUES ('$prefix', '$first_name', '$last_name', '$id_card', '$birth_date', '$address', '$phone', '$email', '$line_id', '$photo_name')";
+
+    if (mysqli_query($conn, $sql1)) {
+        $emp_id = mysqli_insert_id($conn); // ดึง ID ของพนักงานที่เพิ่งสร้าง
+
+        // --- 3. บันทึกประวัติการศึกษา (ตาราง education) ---
+        $degree_level = mysqli_real_escape_string($conn, $_POST['edu_highest']); // วุฒิสูงสุด
+        $sql2 = "INSERT INTO education (emp_id, degree_level) VALUES ('$emp_id', '$degree_level')";
+        mysqli_query($conn, $sql2);
+
+        // --- 4. บันทึกประสบการณ์ทำงาน (ตาราง work_experience) ---
+        $company = mysqli_real_escape_string($conn, $_POST['last_company']);
+        $position = mysqli_real_escape_string($conn, $_POST['last_position']);
+        $salary = !empty($_POST['last_salary']) ? $_POST['last_salary'] : 0;
+        $exit_reason = mysqli_real_escape_string($conn, $_POST['reason_leaving']);
+        
+        $sql3 = "INSERT INTO work_experience (emp_id, company_name, position, salary, exit_reason) 
+                 VALUES ('$emp_id', '$company', '$position', '$salary', '$exit_reason')";
+        mysqli_query($conn, $sql3);
+
+        // --- 5. บันทึกบุคคลอ้างอิง (ตาราง employee_references) ---
+        $ref_name = mysqli_real_escape_string($conn, $_POST['ref_name']);
+        $ref_work = mysqli_real_escape_string($conn, $_POST['ref_workplace']);
+        $ref_phone = mysqli_real_escape_string($conn, $_POST['ref_phone']);
+        $ref_rel = mysqli_real_escape_string($conn, $_POST['ref_relation']);
+
+        $sql4 = "INSERT INTO employee_references (emp_id, ref_name, ref_workplace, ref_phone, relationship) 
+                 VALUES ('$emp_id', '$ref_name', '$ref_work', '$ref_phone', '$ref_rel')";
+        mysqli_query($conn, $sql4);
+
+        // บันทึกสำเร็จทั้งหมด
         echo "<script>
-                alert('บันทึกข้อมูลใบสมัครสำเร็จ!'); 
-                window.location='dashboard.php';
+                alert('บันทึกข้อมูลใบสมัครของคุณเรียบร้อยแล้ว');
+                window.location='view_employees.php';
               </script>";
     } else {
-        // ถ้า Error (เช่น ลืมสร้างตาราง หรือชื่อคอลัมน์ผิด) ให้แสดงข้อความสีแดง
-        echo "<div style='color:red; padding:20px;'>
-                <b>เกิดข้อผิดพลาดในการบันทึกข้อมูล:</b><br>" . mysqli_error($conn) . "<br><br>
-                <b>คำสั่ง SQL ที่มีปัญหา:</b><br>" . $sql . "
-              </div>";
+        echo "Error: " . mysqli_error($conn);
     }
 }
 ?>
