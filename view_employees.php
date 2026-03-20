@@ -108,7 +108,7 @@
                                                 <div class="btn-group">
                                                     <a href="view_details.php?id=<?php echo $row['emp_id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูข้อมูล"><i class="fas fa-eye"></i></a>
                                                     <a href="#" class="btn btn-sm btn-outline-warning" title="แก้ไข"><i class="fas fa-edit"></i></a>
-                                                    <a href="#" class="btn btn-sm btn-outline-danger" title="ลบ" onclick="return confirm('ยืนยันการลบข้อมูล?')"><i class="fas fa-trash"></i></a>
+                                                    <a href="delete_employee.php?id=<?php echo $row['emp_id']; ?>" class="btn btn-sm btn-outline-danger"onclick="return confirm('ยืนยันการลบข้อมูลพนักงานท่านนี้? การลบนี้จะไม่สามารถย้อนคืนได้');"><i class="fas fa-trash"></i></a>
                                                 </div>
                                             </td>
                                         </tr>
